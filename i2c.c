@@ -49,6 +49,7 @@ void i2c_init(i2c_mod_t const n, uint8 const freq, int const addr)
 	MCF_I2C_I2ADR_ADR(n) = addr;
 	uint8 divider = (80 * 1000) / freq;
 	uint8 ic = 0x3A;
+	MCF_I2C_I2FDR_IC(n) = ic;
 	i2c_reset(n);
 	if(MCF_I2C_I2SR_IBB(n) = 1)
 	{
@@ -58,6 +59,7 @@ void i2c_init(i2c_mod_t const n, uint8 const freq, int const addr)
 		dummy = i2x_rx_byte(n, 0, 0);
 		MCF_I2C_I2SR(n) = 0x00;
 		MCF_I2C_I2CR(n) = 0x00;
+		MCF_I2C_I2CR(n) = 0x80;
 	}
 
 
@@ -90,6 +92,7 @@ void i2c_rx(i2c_mod_t const n, uint8 const addr, int const count, uint32 const d
 	i2c_aquire_bus(n);
 	i2c_tx_addr(n, addr, I2C_READ, delay_us, timer);
 	MCF_I2C_I2CR_MTX(n) = 0;
+	MCF_I2C_I2CR_TXAK(n) = 0;
 	uint8 dummy;
 	dummy = i2x_rx_byte(n, delay_us, timer);
 	int i = 0;
@@ -101,7 +104,7 @@ void i2c_rx(i2c_mod_t const n, uint8 const addr, int const count, uint32 const d
 		}
 		else if(i == count)
 		{
-			i2c_send_stop();
+			i2c_send_stop(n);
 		}
 		data[i-1] = i2c_rx_byte(n, delay_us, timer);
 	}
@@ -145,7 +148,7 @@ void i2c_tx(i2c_mod_t const n, uint8 const addr, int const count, uint32 const d
 	i2c_aquire_bus(n);
 	i2c_tx_addr(n, addr, I2C_WRITE, delay_us, timer);
 	int i = 0;
-	for(i=0, i <= count, i++)
+	for(i=0, i < count, i++)
 	{
 		i2c_tx_byte(n, data[i], delay_us, timer);
 	}
@@ -163,10 +166,16 @@ void i2c_tx_addr(i2c_mod_t const n, uint8 const addr, int const rw, uint32 const
 {
 	MCF_I2C_I2CR_MTX(n) = 1;
 	MCF_I2C_I2CR_MSTA(n) = 1;
-
-
-
-
+	uint8 tx_byte;
+	if(rw == I2C_READ)
+	{
+		tx_byte = 0x53;
+	}
+	else
+	{
+		tx_byte = 0x52;
+	}
+	i2c_tx_byte(n, tx_byte, delay_us, timer);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
@@ -179,7 +188,7 @@ void i2c_tx_addr(i2c_mod_t const n, uint8 const addr, int const rw, uint32 const
 void i2c_tx_byte(i2c_mod_t const n, uint8 const tx_byte, uint32 const delay_us, dtim_t const timer)
 {
 	flag = false;
-	int_inhitit_all();
+	int_inhibit_all();
 	MCF_I2C_I2DR(n) = tx_byte;
 	while(flag == false)
 	{
