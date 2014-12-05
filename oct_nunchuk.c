@@ -265,7 +265,7 @@ void oct_nunchuk_tx_cmd(uint8 const reg, uint8 const cmd)
 		tx_data[0] = cmd;
 		tx_count = 1;
 	}
-	i2c_tx(g_i2c_mod, OCT_NUNCHUK_I2C_ADDR, tx_count, OCT_NUNCHUK_I2C_DELAY, tx_data, g_dtim_timer);
+	i2c_tx(g_i2c_mod, OCT_NUNCHUK_I2C_ADDR, tx_count, OCT_NUNCHUK_I2C_DELAY, g_dtim_timer, tx_data);
 	//dtim_busy_delay_us(dtim_t const p_timer, uint32 const p_usecs)
 	dtim_busy_delay_us(g_dtim_timer, 2*OCT_NUNCHUK_DELAY_US);
 }
