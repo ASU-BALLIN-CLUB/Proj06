@@ -32,3 +32,6 @@ void i2c_tx(i2c_mod_t const n, uint8 const addr, int const count, uint32 const d
 void i2c_tx_addr(i2c_mod_t const n, uint8 const addr, int const rw, uint32 const delay_us, dtim_t const timer);
 void i2c_tx_byte(i2c_mod_t const n, uint8 const tx_byte, uint32 const delay_us, dtim_t const timer);
 bool_t i2c_tx_complete(i2c_mod_t const n);
+
+
+#endif
