@@ -74,7 +74,7 @@ void oct_nunchuk_init(i2c_mod_t const p_i2c_mod, dtim_t const p_dtim_timer, pit_
 	oct_nunchuk_tx_cmd(OCT_NUNCHUK_REG_F0, 0x55);
 	oct_nunchuk_tx_cmd(OCT_NUNCHUK_REG_FB, 0x00);
 	//pit_init(pit_timer_t const n, uint8 const p_prescaler, uint16 const p_pmr ,int_isr_t const p_callback)
-	pit_init(g_pit_timer, OCT_NUNCHUK_REFRESH_FREQ_HZ, oct_nunchuk_read);
+	pit_init(g_pit_timer, 2, 999, oct_nunchuk_read);
 	pit_enable(g_pit_timer);
 }
 
