@@ -10,15 +10,23 @@
 
 #include "i2c.h"
 
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_acquire_bus: Busy waits for the I2C bus to become idle.
+//------------------------------------------------------------------------------------------------------------------------
 
 
 void i2c_aquire_bus (i2c_mod_t const n)
 {
-	while (MCF_I2C_I2SR_IBB(n) = 1)
+	while (MCF_I2C_I2SR_IBB(n) == 1)
 	{
 
 	}
 }
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_init: Initializes ColdFire I2C module n so: (1) The I2C clock frequency is freq with freq in [21, 4000] KHz;
+//-- (2) The MCF52259 is configured for slave-receiver mode; (3) The MCF52259 I2C address is addr; and (4) I2C
+//-- interrupts are disabled.
+//------------------------------------------------------------------------------------------------------------------------
 
 
 void i2c_init(i2c_mod_t const n, uint8 const freq, int const addr)
@@ -35,7 +43,7 @@ void i2c_init(i2c_mod_t const n, uint8 const freq, int const addr)
 	else
 	{
 		gpio_port_init(gpio_port_ub, gpio_pin_0, gpio_funct_secondary, gpio_dir_x, gpio_state_x)
-		gpio_port_init(gpio_port_ub, gpio_pin_0, gpio_funct_secondary, gpio_dir_x, gpio_state_x)
+		gpio_port_init(gpio_port_ub, gpio_pin_1, gpio_funct_secondary, gpio_dir_x, gpio_state_x)
 	}
 
 	MCF_I2C_I2ADR_ADR(n) = addr;
@@ -46,7 +54,7 @@ void i2c_init(i2c_mod_t const n, uint8 const freq, int const addr)
 	{
 		MCF_I2C_I2CR(n) = 0x00;
 		MCF_I2C_I2CR(n) = 0xA0;
-		byte dummy;
+		unit8 dummy;
 		dummy = i2x_rx_byte(n, 0, 0);
 		MCF_I2C_I2SR(n) = 0x00;
 		MCF_I2C_I2CR(n) = 0x00;
@@ -79,20 +87,133 @@ void i2c_reset(i2c_mod_t const n)
 
 void i2c_rx(i2c_mod_t const n, uint8 const addr, int const count, uint32 const delay_us, dtim_t const timer, uint8 const data[])
 {
-		i2c_aquire_bus(n);
-		i2c_tx_addr(n, addr, I2C_READ, delay_us, timer);
-		MCF_I2C_I2CR_MTX(n) = 0;
-		byte dummy;
-		dummy = i2x_rx_byte(n, delay_us, timer);
-		int i = 0;
-		for(i=1, i >= count, i++)
+	i2c_aquire_bus(n);
+	i2c_tx_addr(n, addr, I2C_READ, delay_us, timer);
+	MCF_I2C_I2CR_MTX(n) = 0;
+	uint8 dummy;
+	dummy = i2x_rx_byte(n, delay_us, timer);
+	int i = 0;
+	for(i=1, i <= count, i++)
+	{
+		if(i == (count-1))
 		{
-			if(i == (count-1))
-			{
-				MCF_I2C_I2CR_TXAK(n) = 1;
-			}
-			else if(i == count)
-			{
-				i2c_send_stop();
-			}
-			d
+			MCF_I2C_I2CR_TXAK(n) = 1;
+		}
+		else if(i == count)
+		{
+			i2c_send_stop();
+		}
+		data[i-1] = i2c_rx_byte(n, delay_us, timer);
+	}
+	i2c_reset(n);
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_rx_byte: Receives one data byte from the slave-transmitter and returns it. Delays for delay_us µs following the
+//-- transfer. If delay_us is 0 we do not delay.
+//------------------------------------------------------------------------------------------------------------------------
+
+uint8 i2c_rx_byte(i2c_mod_t const n, uint32 const delay_us, dtim_t const timer)
+{
+	uint8 rx_byte;
+	rx_byte = MCF_I2C_I2DR(n);
+	MCF_I2C_I2SR_IFF(n) = 0;
+	if(delay_us != 0)
+	{
+		dtim_busy_delay_us(timer, delay_us);
+		//void dtim_busy_delay_us(dtim_t const p_timer, uint32 const p_usecs)
+	}
+	return rx_byte;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_send_stop: Sends the stop bit prior to ending the communication.
+//------------------------------------------------------------------------------------------------------------------------
+
+void i2c_send_stop(i2c_mod_t n)
+{
+	MCF_I2C_I2CR_MSTA(n) = 0;
+}//end function
+
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_tx: Transmits count data bytes (stored in the array data) to the slave with address addr. Busy delay for delay_us
+//-- µs following each transferred byte as some devices require a delay between data bytes.
+//------------------------------------------------------------------------------------------------------------------------
+
+void i2c_tx(i2c_mod_t const n, uint8 const addr, int const count, uint32 const delay_us, dtim_t const timer, uint8 data[])
+{
+	i2c_aquire_bus(n);
+	i2c_tx_addr(n, addr, I2C_WRITE, delay_us, timer);
+	int i = 0;
+	for(i=0, i <= count, i++)
+	{
+		i2c_tx_byte(n, data[i], delay_us, timer);
+	}
+	i2c_send_stop(n);
+	i2c_reset(n);
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_tx_addr: Begins a transmission to the slave with address addr. This function will place the MCF52259 I2C module
+//-- into master-transmitter mode, transmit the slave address addr, and transmit the R/W bit set to rw. Note: The I2C bus
+//-- should be acquired by calling i2c_acquire_bus() before calling this function.
+//------------------------------------------------------------------------------------------------------------------------
+
+void i2c_tx_addr(i2c_mod_t const n, uint8 const addr, int const rw, uint32 const delay_us, dtim_t const timer)
+{
+	MCF_I2C_I2CR_MTX(n) = 1;
+	MCF_I2C_I2CR_MSTA(n) = 1;
+
+
+
+
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_tx_byte: Transmits one byte (either 8-bits of data or a 7-bit address followed by the R/W bit) to a slave. Busy
+//-- delays for delay_us µs following the transfer as some slaves require a delay between bytes. After the ninth
+//-- SCL clock pulse, the slave will either ACK or NACK the byte. Note: I2C is exquisitely sensitive to timing, so
+//-- interrupts from all levels are inhibited while the transfer takes place.
+//------------------------------------------------------------------------------------------------------------------------
+
+void i2c_tx_byte(i2c_mod_t const n, uint8 const tx_byte, uint32 const delay_us, dtim_t const timer)
+{
+	flag = false;
+	int_inhitit_all();
+	MCF_I2C_I2DR(n) = tx_byte;
+	while(flag == false)
+	{
+		flag = i2c_tx_complete(n);
+	}
+	MCF_I2C_I2SR_IIF(n) = 0;
+	int_unihibit_all();
+	if(delay_us != 0)
+	{
+		dtim_busy_delay_us(timer, delay_us);
+	}
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+//-- i2c_tx_complete: Returns true if the transfer of a data or address byte has completed or false if it is still in
+//-- progress. Note: You might think that you would check for transfer complete by examining I2SR[ICF] but if you read
+//-- §29.4.3 the IMRM tells you that I2SR[IIF] is also set when a transfer completes. Continuing, the second sentence of
+//-- the second paragraph states, "Polling should monitor IIF rather than ICF, because the operation is different when
+//-- arbitration is lost". Whatever.
+//------------------------------------------------------------------------------------------------------------------------
+
+bool_t i2c_tx_complete(i2c_mod_t const n)
+{
+	if(MCF_I2C_I2SR_IIF == 1)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+
+
+
+
