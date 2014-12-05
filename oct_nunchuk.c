@@ -174,18 +174,9 @@ void oct_nunchuk_read()
 	i2c_rx(g_i2c_mod, OCT_NUNCHUK_I2C_ADDR, 6, OCT_NUNCHUK_I2C_DELAY_US, data, g_dtim_timer);
 	g_pos_x = (int)data[0];
 	g_pos_y = (int)data[1];
-	g_accel_x = (int)data[2];
-	g_accel_y = (int)data[3];
-	g_accel_z = (int)data[4];
-	temp = 0b00001100;
-	temp &= (data[5]);
-	g_accel_x = g_accel_x + (int)temp;
-	temp = 0b00110000;
-	temp &= (data[5]);
-	g_accel_y = g_accel_y + (int)temp;
-	temp = 0b11000000;
-	temp &= (data[5]);
-	g_accel_z = g_accel_z + (int)temp;
+	g_accel_x = (int)(data[2] << 2 | (data[5] & 0x0C) >> 2);
+	g_accel_y = (int)(data[3] << 2 | (data[5] & 0x30) >> 4);
+	g_accel_z = (int)(data[4] << 2 | (data[5] & 0xC0) >> 6);
 	temp = OCT_NUNCHUK_BUTTON_C;
 	temp &= (data[5]);
 	if(temp == 0)
