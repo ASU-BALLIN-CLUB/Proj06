@@ -161,6 +161,115 @@ int oct_nunchuck_pos_y()
 	return g_pos_y;
 }
 
+//------------------------------------------------------------------------------------------------------------------------
+//-- oct_nunchuk_read: Called at OCT_NUNCHUK_REFRESH_FREQ_HZ Hz by the PIT timer interrupt service routine. We read the
+//-- Nunchuk state information using the Nunchuk protocol. Call user callback functions as appropriate.
+//------------------------------------------------------------------------------------------------------------------------
+
+void oct_nunchuk_read()
+{
+	uint8 temp = 0;
+	oct_nunchuk_tx_cmd(OCT_NUNCHUK_REG_NONE, 0x00);
+	uint8 data[6] = {0};
+	i2c_rx(g_i2c_mod, OCT_NUNCHUK_I2C_ADDR, 6, OCT_NUNCHUK_I2C_DELAY_US, data, g_dtim_timer);
+	g_pos_x = (int)data[0];
+	g_pos_y = (int)data[1];
+	g_accel_x = (int)data[2];
+	g_accel_y = (int)data[3];
+	g_accel_z = (int)data[4];
+	temp = 0b00001100;
+	temp &= (data[5]);
+	g_accel_x = g_accel_x + (int)temp;
+	temp = 0b00110000;
+	temp &= (data[5]);
+	g_accel_y = g_accel_y + (int)temp;
+	temp = 0b11000000;
+	temp &= (data[5]);
+	g_accel_z = g_accel_z + (int)temp;
+	temp = OCT_NUNCHUK_BUTTON_C;
+	temp &= (data[5]);
+	if(temp == 0)
+	{
+		g_button_c = 1;
+	}
+	else
+	{
+		g_button_c = 0;
+	}
+	temp =  OCT_NUNCHUK_BUTTON_Z;
+	temp &= (data[5]);
+	if(temp == 0)
+	{
+		g_button_z = 1;
+	}
+	else
+	{
+		g_button_z = 0;
+	}
+	if(g_pos_x < OCT_NUNCHUK_STICK_LEFT_MAX && g_callback_stick_left != 0)
+	{
+		g_callback_stick_left();
+	}
+	else if(g_pos_x > OCT_NUNCHUK_STICK_RIGHT_MIN && g_callback_stick_right !=0)
+	{
+		g_callback_stick_right();
+	}
+	if(g_pos_y < OCT_NUNCHUK_STICK_DOWN_MAX && g_callback_stick_down != 0)
+	{
+		g_callback_stick_down();
+	}
+	else if(g_pos_y < OCT_NUNCHUK_STICK_UP_MIN && g_callback_stick_up != 0)
+	{
+		g_callback_stick_up();
+	}
+	if(g_button_c != 0 && g_callback_button_c !=0)
+	{
+		g_callback_button_c();
+	}
+	if(g_button_z != 0 && g_callback_button_z !=0)
+	{
+		g_callback_button_z();
+	}
+}
+//------------------------------------------------------------------------------------------------------------------------
+//-- oct_nunchuk_reset: Initialize all of the callback function pointers to null.
+//------------------------------------------------------------------------------------------------------------------------
+
+void oct_nunchuk_reset()
+{
+	g_callback_button_c = 0;
+	g_callback_button_z = 0;
+	g_callback_stick_down = 0;
+	g_callback_stick_left = 0;
+	g_callback_stick_right = 0;
+	g_callback_stick_up = 0;
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+//-- oct_nunchuk_tx_cmd: Transmits command cmd to Nunchuk register reg. If reg is OCT_NUNCHUK_REG_NONE (because the
+//-- command is not sent to a Nunchuk register, then we only transmit 1 byte, which is the command. For reasons I do not
+//-- understand, we have to delay after transmitting. I discovered by trial-and-error that 300 µs (2 ×
+//-- OCT_NUNCHUK_I2C_DELAY_US) works well.
+//------------------------------------------------------------------------------------------------------------------------
+
+void oct_nunchuk_tx_cmd(uint8 const reg, uint8 const cmd)
+{
+	if(reg != OCT_NUNCHUK_REG_NONE)
+	{
+		tx_data[0] = reg;
+		tx_data[1] = cmd;
+		tx_count = 2;
+	}
+	else
+	{
+		tx_data[0] = cmd;
+		tx_count = 1;
+	}
+	i2c_tx(g_i2c_mod, OCT_NUNCHUK_I2C_ADDR, tx_count, OCT_NUNCHUK_I2C_DELAY, tx_data, g_dtim_timer);
+	//dtim_busy_delay_us(dtim_t const p_timer, uint32 const p_usecs)
+	dtim_busy_delay_us(g_dtim_timer, 2*OCT_NUNCHUK_DELAY_US);
+}
+
 
 
 
