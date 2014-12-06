@@ -17,7 +17,7 @@
 
 void i2c_aquire_bus (i2c_mod_t const n)
 {
-	while (MCF_I2C_I2SR_IBB(n) == 1)
+	while (MCF_I2C1_I2SR & MCF_I2C_I2SR_IBB)
 	{
 
 	}
