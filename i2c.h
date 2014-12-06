@@ -12,6 +12,11 @@
 #define I2C_H_
 
 #include "support_common.h"
+#include "dtim.h"
+#include "gpio.h"
+#include "int.h"
+#include "oct_nunchuk.h"
+#include "pit.h"
 
 typedef enum
 {
