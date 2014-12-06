@@ -68,4 +68,27 @@ static int g_i2c_mod;
 static int g_dtim_timer;
 //Define g_pit_timer -- The PIT timer to use to read the Nunchuk state at 4 Hz
 static int g_pit_timer;
+
+
+int oct_nunchuk_accel_x();
+int oct_nunchuk_accel_y();
+int oct_nunchuk_accel_z();
+int oct_nunchuk_button_c();
+int oct_nunchuk_button_z();
+void oct_nunchuk_init(i2c_mod_t const p_i2c_mod, dtim_t const p_dtim_timer, pit_timer_t const p_pit_timer);
+void oct_nunchuck_on_button_c(int_isr_t const g_callback);
+void oct_nunchuk_on_button_z(int_isr_t const g_callback);
+void oct_nunchuk_on_stick_down(int_isr_t const g_callback);
+void oct_nunchuk_on_stick_left(int_isr_t const g_callback);
+void oct_nunchuk_on_stick_right(int_isr_t const g_callback);
+void oct_nunchuk_on_stick_up(int_isr_t const g_callback);
+int oct_nunchuck_pos_x();
+int oct_nunchuck_pos_y();
+void oct_nunchuk_read();
+void oct_nunchuk_reset();
+void oct_nunchuk_tx_cmd(uint8 const reg, uint8 const cmd);
+
+
+
+
 #endif
