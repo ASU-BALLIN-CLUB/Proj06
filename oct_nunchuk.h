@@ -15,7 +15,6 @@
 #include "gpio.h"
 #include "i2c.h"
 #include "int.h"
-#include "oct_nunchuk.h"
 #include "pit.h"
 
 //Define OCT_NUNCHUK_BUTTON_C 0x02 -- Button C state is in bit 1 of last rx byte
